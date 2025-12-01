@@ -2,8 +2,10 @@ package com.fernando.springcloud.msvc.users.controllers;
 
 import jakarta.validation.Valid;
 
+import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +18,9 @@ public class UserController {
 
     private final IUserService service;
 
-    private PasswordEncoder passwordEncoder;
-
-    public UserController(IUserService service, PasswordEncoder passwordEncoder) {
+    public UserController(IUserService service) {
         this.service = service;
-        this.passwordEncoder = passwordEncoder;
+
     }
 
     @GetMapping
@@ -30,28 +30,23 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-        User user = service.findById(id);
-        if (user == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(user);
+        return service.findById(id).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/search/{username}")
+    public ResponseEntity<?> getByUsername(@PathVariable String username) {
+        return service.findByUsername(username).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
 
-    @GetMapping("/{username}")
-    public ResponseEntity<?> getByUsername(@PathVariable String usrname) {
-        User user = service.findByUsername(usrname);
-        if (user == null)
-            return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(user);
     }
 
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody User user, BindingResult result) {
-        if (result.hasErrors()){
+        if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
         }
 
-         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return ResponseEntity.ok(service.save(user));
     }
 
@@ -60,27 +55,21 @@ public class UserController {
         if (result.hasErrors())
             return ResponseEntity.badRequest().body(result.getAllErrors());
 
-        User userDb = service.findById(id);
-        if (userDb == null)
-            return ResponseEntity.notFound().build();
+        return service.update(user, id).map(userUpdate -> ResponseEntity.status(HttpStatus.OK).body(userUpdate))
+                .orElseGet(() -> ResponseEntity.notFound().build());
 
-
-        userDb.setUsername(user.getUsername());
-        userDb.setPassword(user.getPassword());
-        userDb.setEmail(user.getEmail());
-        if(user.isEnabled() != null)
-             userDb.setEnabled(user.isEnabled());
-
-        return ResponseEntity.ok(service.save(userDb));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
-        User userDb = service.findById(id);
-        if (userDb == null)
+        Optional<User> userDb = service.findById(id);
+
+        if (userDb.isEmpty()) {
             return ResponseEntity.notFound().build();
+        }
 
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
 }

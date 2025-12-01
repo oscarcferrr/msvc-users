@@ -24,6 +24,9 @@ public class User {
     private String password;
 
     private Boolean enabled;
+    
+    @Transient
+    private boolean admin;
 
     @JsonIgnoreProperties({"handler","hibernateLazyInitializer"})
     @ManyToMany
@@ -87,5 +90,17 @@ public class User {
     public void setRoles(List<Role> roles) {
         this.roles = roles;
     }
+
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
+    }
+
+    
+
+    
 
 }
